@@ -2,10 +2,12 @@
 package reflector
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
+	//	nsutils "kvk-d-itm-git01.megafon.ru/notification-system/ns-shared-libs/utils"
 )
 
 // Converts value to kind. Panics if it can't be done.
@@ -265,8 +267,22 @@ func MapToStruct(Map map[string]interface{}, StructPointer interface{}, converte
 		case reflect.String:
 			f.SetString(converter(v, kind).(string))
 
+		case reflect.Slice, reflect.Interface:
+
+			m := reflect.New(f.Type()).Interface()
+
+			if text, err := Interface2JsonStr(v); err != nil {
+				panic(fmt.Errorf(err.Error()))
+			} else {
+				if err := json.Unmarshal([]byte(text), &m); err != nil {
+					panic(fmt.Errorf(err.Error()))
+				}
+			}
+
+			f.Set(reflect.ValueOf(m).Elem())
 		default:
 			// not implemented
+			fmt.Println("MapToStruct| kind:", kind, "is not implemented")
 		}
 
 		if fp.IsValid() {
@@ -312,4 +328,13 @@ func MapsToStructs2(Maps []interface{}, SlicePointer interface{}, converter Conv
 		m[index] = i.(map[string]interface{})
 	}
 	MapsToStructs(m, SlicePointer, converter, tag)
+}
+
+// interface{} to JSON string
+func Interface2JsonStr(aStruct interface{}) (string, error) {
+	if s, err := json.Marshal(&aStruct); err != nil {
+		return "Json decode error:", err
+	} else {
+		return string(s), nil
+	}
 }
